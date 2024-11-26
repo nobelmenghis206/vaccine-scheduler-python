@@ -18,10 +18,47 @@ current_caregiver = None
 
 
 def create_patient(tokens):
-    """
-    TODO: Part 1
-    """
-    pass
+    
+    # Part 1 
+    global current_patient, current_caregiver
+
+    username = tokens[1]
+    password = tokens[2]
+
+    if current_patient is not None:
+        print("User already logged in, try again")
+        return
+
+    if current_caregiver is not None:
+        print("User already logged in, try again")
+        return
+
+    cm = ConnectionManager()
+    conn = cm.create_connection()
+    cursor = conn.cursor(as_dict=True)
+    try:
+        cursor.execute("SELECT * FROM Patients WHERE Username = %s", username)
+        if cursor.fetchone():
+            print("Username taken, try again")
+            return
+    except pymssql.Error as e:
+        print("Create patient failed")
+        print("Db-Error:", e)
+        return
+    finally:
+        cm.close_connection()
+
+  
+    salt = Util.generate_salt()
+    hash = Util.generate_hash(password, salt)
+
+    patient = Patient(username=username, salt=salt, hash=hash)
+    try:
+        patient.save_to_db()
+        print(f"Created user {username}")
+    except Exception as e:
+        print("Create patient failed")
+        print(e)
 
 
 def create_caregiver(tokens):
@@ -82,10 +119,34 @@ def username_exists_caregiver(username):
 
 
 def login_patient(tokens):
-    """
-    TODO: Part 1
-    """
-    pass
+    ## Part 1 
+    global current_patient, current_caregiver
+
+
+    if len(tokens) != 3:
+        print("Login patient failed")
+        return
+
+    username = tokens[1]
+    password = tokens[2]
+
+    if current_patient is not None: 
+        print("User already logged in, try again")
+        return 
+    
+    if current_caregiver is not None: 
+        print("User already logged in, try again")
+
+    try:
+        patient = Patient(username=username, password=password).get()
+        if patient is None:
+            print("Login patient failed")
+        else:
+            current_patient = patient
+            print(f"Logged in as {username}")
+    except Exception as e:
+        print("Login patient failed")
+        print(e)
 
 
 def login_caregiver(tokens):
